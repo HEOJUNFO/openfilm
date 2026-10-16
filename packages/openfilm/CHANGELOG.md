@@ -1,5 +1,15 @@
 # openfilm
 
+## 0.1.8
+
+### Patch Changes
+
+- [#47](https://github.com/openfilm/openfilm/pull/47) [`e70d9d9`](https://github.com/openfilm/openfilm/commit/e70d9d93c7bebe3d634ff2caa6f7a738cdde59d3) Thanks [@wang135531](https://github.com/wang135531)! - Speech recognition with Doubao using your Volcengine Speech API key, with word-timed transcripts from audio and video recordings.
+
+  Keep transcript lines visible through their timed words, even when speech is slower than the estimated reading time.
+
+- [#49](https://github.com/openfilm/openfilm/pull/49) [`b92c292`](https://github.com/openfilm/openfilm/commit/b92c29240b7fec2d9e993c23264eaf6ac593db5e) Thanks [@Abramfreemm](https://github.com/Abramfreemm)! - Preserve Unicode file and folder paths in Windows Studio dialogs so importing media from paths containing non-ASCII characters works correctly.
+
 ## 0.1.7
 
 ### Patch Changes

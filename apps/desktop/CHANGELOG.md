@@ -1,5 +1,12 @@
 # @openfilm/desktop
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [[`e70d9d9`](https://github.com/openfilm/openfilm/commit/e70d9d93c7bebe3d634ff2caa6f7a738cdde59d3), [`b92c292`](https://github.com/openfilm/openfilm/commit/b92c29240b7fec2d9e993c23264eaf6ac593db5e)]:
+  - openfilm@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes
