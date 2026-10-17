@@ -127,6 +127,16 @@ function clockOf(frame: number, fps: number): { secs: number; frames: number } {
   return { secs, frames: frame - first };
 }
 
+/**
+ * The time, in seconds, a timecode's second and frame name: clockOf's way back, so a typed `00:00:17:00` is the frame
+ * that shows as it. At 29.97 the 17th second's first frame starts 17 ms after 17 s; `17 + 0 / 29.97` lands a frame
+ * early, on the one that reads `00:00:16:29`.
+ */
+export function timecodeSeconds(secs: number, frames: number, fps = currentFps): number {
+  const rate = exactRate(fps);
+  return (Math.ceil(secs * rate - 1e-9) + frames) / rate;
+}
+
 export function formatTimecode(ms: number, opts?: { hours?: boolean; fps?: number }): string {
   const { secs, frames } = clockOf(frameAt(ms, opts?.fps), opts?.fps ?? currentFps);
   const tail = `${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}:${pad(frames)}`;

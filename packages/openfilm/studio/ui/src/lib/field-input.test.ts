@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyFieldInput, parseFieldInput } from './field-input.ts';
+import { formatTimecode, frameAt } from './timecode.ts';
 
 test('a typed number, arithmetic and px', () => {
   assert.deepEqual(parseFieldInput('240'), { set: 240 });
@@ -48,6 +49,20 @@ test('time: seconds, frames, ms and timecodes', () => {
   assert.deepEqual(parseFieldInput('1s + 15f', time), { set: 1.5 });
   assert.equal(parseFieldInput('12f'), null, 'frames only in a time field');
   assert.equal(parseFieldInput('00:02:15'), null, 'a timecode only in a time field');
+});
+
+test('a typed timecode lands on the frame that shows it, at every rate', () => {
+  /* at 29.97 the 17th second starts 17 ms after 17 s: 17 + 0 / 29.97 was the frame shown as 00:00:16:29 */
+  const at = (raw: string, fps: number) => (parseFieldInput(raw, { time: true, fps }) as { set: number }).set;
+  assert.equal(formatTimecode(at('00:00:17:00', 29.97) * 1000, { fps: 29.97 }), '00:00:17:00');
+  for (const fps of [23.976, 24, 25, 29.97, 30, 59.94, 60]) {
+    for (let frame = 0; frame < 120 * fps; frame += 1) {
+      const shown = formatTimecode((frame * 1000) / (fps === Math.round(fps) ? fps : (Math.round(fps) * 1000) / 1001), { fps });
+      assert.equal(formatTimecode(at(shown, fps) * 1000, { fps }), shown, `${shown} at ${fps}`);
+    }
+  }
+  /* frames count at the real rate too: 30 frames at 29.97 are a whole frame past 1 s */
+  assert.equal(frameAt(at('30f', 29.97) * 1000, 29.97), 30);
 });
 
 test('the field\'s own unit marks, and what is not understood', () => {

@@ -2,11 +2,13 @@
  * What a person types into a number field of the inspector, read as Figma and the editors read it: arithmetic
  * (`1440/2`), a change of the value there (`+20`, `-20`, `*2`, `/2`), and units — `px` is dropped, `50%` is half of
  * what the field measures against (the stage, for a place or a size), and a time takes seconds (`2.5s`), frames
- * (`12f`, at the timecode's 30 a second), milliseconds and timecodes (`00:00:02:15`).
+ * (`12f`, at the timecode's rate), milliseconds and timecodes (`00:00:02:15`, read as the timecode shows them).
  *
  * A leading `-` is a change, like `+`: "20 to the left". A negative value itself is typed in brackets, `(-20)`, or
  * worked out, `0-20`.
  */
+
+import { exactRate, timecodeSeconds } from './timecode.ts';
 
 /** A value to set, or a change of the value there (each of several selected things changes from its own). */
 export type FieldInput = { set: number } | { rel: '+' | '-' | '*' | '/'; by: number };
@@ -56,7 +58,7 @@ function tokenize(raw: string, ctx: FieldContext, inScale: boolean): Token[] | n
       if (parts.length > 4) return null;
       const frames = parts.pop()!;
       const [sec = 0, min = 0, hour = 0] = parts.reverse();
-      value = hour * 3600 + min * 60 + sec + frames / fps;
+      value = timecodeSeconds(hour * 3600 + min * 60 + sec, frames, fps);
     } else {
       const n = Number(m[0]);
       if (unit === 'px' || (unit && units.includes(unit))) value = n;
@@ -68,7 +70,7 @@ function tokenize(raw: string, ctx: FieldContext, inScale: boolean): Token[] | n
         else return null;
       } else if (unit === 's' || unit === 'ms' || unit === 'f') {
         if (!ctx.time) return null;
-        value = unit === 's' ? n : unit === 'ms' ? n / 1000 : n / fps;
+        value = unit === 's' ? n : unit === 'ms' ? n / 1000 : n / exactRate(fps);
       } else value = n;
     }
     out.push({ kind: 'num', value });
