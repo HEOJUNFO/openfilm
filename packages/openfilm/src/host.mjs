@@ -222,12 +222,62 @@ export function injectFirst(html, tag) {
 export async function launch({ headed = false, channel = headed ? 'chromium' : null, args: extra = [], env } = {}) {
   /* CanvasDrawElement: HTML-in-Canvas (drawElementImage, texElementImage2D), so a page can draw its own DOM into 2D or WebGL */
   const args = ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--enable-blink-features=CanvasDrawElement', ...extra];
-  if (process.platform === 'darwin') args.push('--use-angle=metal');
-  const browser = await chromium.launch({ ...(channel ? { channel } : {}), headless: !headed, args, ...(env ? { env } : {}) });
+  const open = (/** @type {string[]} */ angle) => chromium.launch({ ...(channel ? { channel } : {}), headless: !headed, args: [...args, ...angle], ...(env ? { env } : {}) });
+  const browser = extra.some((a) => a.startsWith('--use-angle')) ? await open([])
+    : process.platform === 'darwin' ? await open(['--use-angle=metal'])
+    : process.platform === 'win32' ? await onWindows(open)
+    : await open([]);
   LIVE.add(browser);
   browser.on('disconnected', () => LIVE.delete(browser));
   return browser;
 }
+
+/** A renderer string that is not a GPU: WebGL drawn on the CPU. */
+export const SOFTWARE_GL = /swiftshader|llvmpipe|software/i;
+
+/** The page's WebGL renderer as the driver names it; 'none' without WebGL. */
+const readRenderer = () => {
+  const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+  if (!gl) return 'none';
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+};
+
+/** @param {import('playwright-core').Browser} browser */
+async function rendererOf(browser) {
+  const page = await browser.newPage();
+  try { return await page.evaluate(readRenderer); } finally { await page.close(); }
+}
+
+/**
+ * Windows: headless Chromium picks no ANGLE backend by itself and draws WebGL with SwiftShader, on the CPU. Vulkan
+ * reaches the GPU (on a laptop with two, the discrete one: d3d11 and gl take the integrated one). A virtual machine, a
+ * CI runner or a computer without a Vulkan driver has none, so the first browser reads its renderer once: when Vulkan
+ * did not start, or is software too, it and every later browser take Chromium's default.
+ * @param {(browser: import('playwright-core').Browser) => Promise<string>} [renderer]
+ */
+export function vulkanFirst(renderer = rendererOf) {
+  /** @type {Promise<string[]> | null} what every browser after the first is opened with */
+  let chosen = null;
+  /** @param {(angle: string[]) => Promise<import('playwright-core').Browser>} open */
+  return async (open) => {
+    if (chosen) return open(await chosen);
+    /** @type {(angle: string[]) => void} */
+    let choose = () => {};
+    chosen = new Promise((r) => { choose = r; });
+    const vulkan = ['--use-angle=vulkan'];
+    const browser = await open(vulkan).catch(() => null);
+    const gpu = browser ? await inTime(renderer(browser), 30_000, 'no renderer').catch(() => 'none') : 'none';
+    if (browser && gpu !== 'none' && !SOFTWARE_GL.test(gpu)) {
+      choose(vulkan);
+      return browser;
+    }
+    await browser?.close().catch(() => {});
+    choose([]);
+    return open([]);
+  };
+}
+const onWindows = vulkanFirst();
 
 /** Every browser launch() opened and that is still open. */
 const LIVE = new Set();
@@ -420,12 +470,7 @@ export class FilmPage {
   }
 
   async gpu() {
-    return this.page.evaluate(() => {
-      const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
-      if (!gl) return 'none';
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-    });
+    return this.page.evaluate(readRenderer);
   }
 
   async close() { await this.context.close(); }

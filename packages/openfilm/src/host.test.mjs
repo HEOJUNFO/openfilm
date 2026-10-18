@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { serve } from './host.mjs';
+import { serve, vulkanFirst } from './host.mjs';
 import { locate } from './shared.mjs';
 
 test('the served folder is all a page reads: no way out through .., a link or a malformed address', { skip: process.platform === 'win32' && 'links need Developer Mode on Windows' }, async () => {
@@ -54,4 +54,46 @@ test('look and render serve the film\'s project, never the folders around it', (
   } finally {
     process.chdir(was);
   }
+});
+
+test('Windows: Vulkan when its renderer is a GPU, read once; otherwise the default, for every later browser too', async () => {
+  /** A launcher that records what each browser was opened with; `fails` makes a Vulkan launch throw. */
+  const launcher = (fails = false) => {
+    const opened = /** @type {string[][]} */ ([]), closed = /** @type {string[][]} */ ([]);
+    const open = async (/** @type {string[]} */ angle) => {
+      opened.push(angle);
+      if (fails && angle.length) throw new Error('no Vulkan driver');
+      return /** @type {any} */ ({ angle, close: async () => { closed.push(angle); } });
+    };
+    return { open, opened, closed };
+  };
+  const reads = (/** @type {() => Promise<string>} */ said) => {
+    let count = 0;
+    return { renderer: async () => { count++; return said(); }, get count() { return count; } };
+  };
+  const vulkan = ['--use-angle=vulkan'];
+
+  const gpu = reads(async () => 'ANGLE (NVIDIA, Vulkan 1.4.329 (NVIDIA GeForce RTX 5070 Laptop GPU (0x00002D58)), NVIDIA)');
+  let l = launcher(), pick = vulkanFirst(gpu.renderer);
+  const browsers = await Promise.all([pick(l.open), pick(l.open), pick(l.open)]);
+  assert.deepEqual(browsers.map((b) => b.angle), [vulkan, vulkan, vulkan]);
+  assert.equal(gpu.count, 1);
+  assert.deepEqual(l.closed, []);
+
+  for (const said of [async () => 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)', async () => 'none', async () => { throw new Error('page crashed'); }]) {
+    const software = reads(said);
+    l = launcher(); pick = vulkanFirst(software.renderer);
+    const [first, second] = await Promise.all([pick(l.open), pick(l.open)]);
+    assert.deepEqual([first.angle, second.angle], [[], []]);
+    assert.deepEqual(l.opened, [vulkan, [], []]);
+    assert.deepEqual(l.closed, [vulkan]);
+    assert.equal(software.count, 1);
+  }
+
+  const never = reads(async () => 'unused');
+  l = launcher(true); pick = vulkanFirst(never.renderer);
+  assert.deepEqual((await pick(l.open)).angle, []);
+  assert.deepEqual((await pick(l.open)).angle, []);
+  assert.deepEqual(l.opened, [vulkan, [], []]);
+  assert.equal(never.count, 0);
 });
