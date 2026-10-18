@@ -721,11 +721,14 @@ export function filmSubtitleSrt(cues) {
   return blocks.length ? `${blocks.join('\n\n')}\n` : '';
 }
 
+/** `&`, `<` and `>` as VTT's escapes: a raw `<` starts a tag, `&` an escape, and `-->` would end the cue's timing. */
+const escapeVtt = (/** @type {string} */ s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /** A WebVTT file; the speaker as `<v name>`, VTT's own voice tag. @param {readonly FilmSubtitleCue[]} cues */
 export function filmSubtitleVtt(cues) {
   const blocks = sequencedCues(cues).map(({ cue, end }) => {
-    const text = cue.text.trim().replace(/-->/g, '→');
-    const line = cue.speaker ? `<v ${cue.speaker.replace(/[<>]/g, '')}>${text}` : text;
+    const text = escapeVtt(cue.text.trim());
+    const line = cue.speaker ? `<v ${escapeVtt(cue.speaker)}>${text}` : text;
     return `${srtStamp(cue.startMs).replace(',', '.')} --> ${srtStamp(end).replace(',', '.')}\n${line}`;
   });
   return blocks.length ? `WEBVTT\n\n${blocks.join('\n\n')}\n` : '';
