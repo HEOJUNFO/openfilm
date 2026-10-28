@@ -151,6 +151,17 @@ export function writeLastSubtitleStyle(style: SubtitleStyle): void {
   } catch { /* private mode */ }
 }
 
+/**
+ * The style a project must be given once its folder has answered: the remembered look it starts from (`start`) when it
+ * has none of its own (`kept`) and that look is not the default. Exports burn the project's file, not this browser's
+ * memory, so without it a film shown in the remembered look would burn the default one (#286). Null: nothing to write.
+ */
+export function inheritedSubtitleStyle(kept: SubtitleStyle | null, start: SubtitleStyle): SubtitleStyle | null {
+  if (kept) return null;
+  const same = JSON.stringify(parseFilmSubtitleStyle(start)) === JSON.stringify(parseFilmSubtitleStyle(SUBTITLE_DEFAULT));
+  return same ? null : start;
+}
+
 /* ── Studio's API (studio/server/captions.mjs) ───────────────────────────── */
 
 /** The film's subtitles as the server works them out (`GET /api/projects/:id/captions`). */

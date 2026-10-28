@@ -4,7 +4,8 @@
  * and not in film.html, so an agent rewriting the film never resets it.
  *
  * A project whose style was never changed starts from the look this person used last (this browser remembers it,
- * see readLastSubtitleStyle), else the default; nothing is written for it until the person changes something. A
+ * see readLastSubtitleStyle), else the default. A remembered look is written to the project as soon as the project
+ * turns out to have no style of its own, so its exports burn what Studio shows (#286); the default is not written. A
  * version restored (the project's `{ type: 'history', moved }` event) brings its own: read again.
  */
 import * as React from 'react';
@@ -14,6 +15,7 @@ import { historyMoved } from './project-history';
 
 import {
   fetchSubtitleStyle,
+  inheritedSubtitleStyle,
   readLastSubtitleStyle,
   saveSubtitleStyle,
   SUBTITLE_DEFAULT,
@@ -45,8 +47,10 @@ export function useSubtitleStyle(projectId: string): [SubtitleStyle, React.Dispa
       /* changed in the meantime: the person's change wins, and is written now */
       const dirty = JSON.stringify(styleRef.current) !== startJson;
       if (kept && !dirty) setStyle(kept);
-      saved.current = dirty ? '' : JSON.stringify(kept ?? start);
-      if (dirty) setStyle((s) => ({ ...s }));
+      /* none of its own, shown in the remembered look: written now too */
+      const write = dirty || inheritedSubtitleStyle(kept, start) !== null;
+      saved.current = write ? '' : JSON.stringify(kept ?? start);
+      if (write) setStyle((s) => ({ ...s }));
     }, () => {
       if (!ask.signal.aborted) saved.current = '';
     });
