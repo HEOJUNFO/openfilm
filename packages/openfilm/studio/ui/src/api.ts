@@ -3,6 +3,7 @@
  * cookie `/open` set; writes are refused from any other origin.
  */
 import type { ExportJob } from '@/lib/export-jobs';
+import type { SubtitleStyle } from '@/lib/subtitles';
 import { studioHost } from '@/lib/host';
 import { watchStudioVersion } from '@/lib/studio-version';
 
@@ -136,7 +137,7 @@ export const api = {
   /** the system's folder dialog, opened by Studio (a page in a browser cannot learn a path): the folder, or null when
       cancelled; throws (501) where this system has none */
   pickFolder: (title: string, at?: string) => call<{ path: string | null }>('pick-folder', { method: 'POST', json: { title, ...(at ? { at } : {}) } }).then((r) => r.path),
-  newProject: (name?: string) => call<{ project: Project }>('projects', { method: 'POST', json: { name } }).then((r) => r.project),
+  newProject: (name?: string, subtitleStyle?: SubtitleStyle) => call<{ project: Project }>('projects', { method: 'POST', json: { name, subtitleStyle } }).then((r) => r.project),
   /** open a folder (its full path) as a project: made one when it is not yet */
   openFolder: (path: string) => call<{ project: Project }>('projects', { method: 'POST', json: { path } }).then((r) => r.project),
   rename: (id: string, name: string) => call<{ project: Project }>(p(id), { method: 'PATCH', json: { name } }).then((r) => {

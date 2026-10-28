@@ -25,6 +25,7 @@ import { stillThere } from '@/lib/project-delete';
 import { studioHost } from '@/lib/host';
 import { SourceError, sourcesApi } from '@/lib/project-sources';
 import { LIST_WAIT_MS, within } from '@/lib/projects-page';
+import { readLastSubtitleStyle } from '@/lib/subtitles';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ProjectsView, type LibraryProject } from './ProjectsView';
 import { FolderBrowserDialog, GitHubDialog } from './ProjectSources';
@@ -336,7 +337,7 @@ export function ProjectsPopover({
   async function newProject(folderId: string | null) {
     setBusy('creating');
     try {
-      const project = await newProjectIn(folderId, { create: () => api.newProject(t('project.untitled')), move: folderApi.move });
+      const project = await newProjectIn(folderId, { create: () => api.newProject(t('project.untitled'), readLastSubtitleStyle() ?? undefined), move: folderApi.move });
       go(project.id, 'creating');
     } catch {
       setBusy(null);

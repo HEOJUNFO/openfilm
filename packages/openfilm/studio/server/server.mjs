@@ -54,7 +54,7 @@ import { FILM_FILE, clipKind, isPage } from '../../src/film-doc.mjs';
 import { moveToTrash } from './trash.mjs';
 import { listSkills, removeSkill, setSkillCover, setSkillInstalled, setSkillOn, skillOrigins, skillsInstalled, skillsOff } from '../../src/skills.mjs';
 import { providersRoute } from './providers/index.mjs';
-import { captionRoutes } from './captions.mjs';
+import { captionRoutes, writeSubtitleStyle } from './captions.mjs';
 import { projectSettingsRoute } from './project-settings.mjs';
 import { markersRoute } from './markers.mjs';
 import { transitionPageRoutes } from './transition-pages.mjs';
@@ -521,8 +521,15 @@ export async function startStudio({ port = 4747, key, openBrowser = systemBrowse
       if (req.method === 'GET') return json(res, 200, { projects: (await listProjects()).map((p) => (agentIn(p.path) ? { ...p, working: true } : p)) });
       /* `create` false: only a folder holding a film opens (the editor asks before starting one in a folder) */
       if (req.method === 'POST') {
-        const body = /** @type {{ path?: string, name?: string, create?: boolean }} */ (await readJson(req));
-        return json(res, 200, { project: body.path ? await openProject(body.path, { create: body.create !== false }) : await createProject(body.name) });
+        const body = /** @type {{ path?: string, name?: string, create?: boolean, subtitleStyle?: unknown }} */ (await readJson(req));
+        if (body.path) return json(res, 200, { project: await openProject(body.path, { create: body.create !== false }) });
+        const project = await createProject(body.name);
+        /* a new film starts in the subtitle look this person used last (Studio remembers it): written before its first
+           version, so the project, its exports and Studio agree. An opened project keeps its own, or the default (#286). */
+        if (body.subtitleStyle && typeof body.subtitleStyle === 'object') {
+          await writeSubtitleStyle(project.path, body.subtitleStyle).catch(() => { /* the film still opens, in the default look */ });
+        }
+        return json(res, 200, { project });
       }
     }
     /* a film from GitHub (fetch-repo.mjs): POST { url } `projects/fetch` starts it → { job }; GET `projects/fetch/:id`

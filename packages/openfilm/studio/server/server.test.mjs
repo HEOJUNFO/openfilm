@@ -1026,3 +1026,17 @@ test('a project deleted: every page showing it is told it is gone; several delet
   const { projects } = await (await api('/api/projects')).json();
   assert.deepEqual(projects.filter((p) => made.some((m) => m.id === p.id)), []);
 });
+
+test('a new project starts in the subtitle look Studio sends with it, written before anything else; an opened one gets none (#286)', async () => {
+  const look = { on: true, fill: '#ffd400', align: 'left' };
+  const { project } = await (await api('/api/projects', { method: 'POST', body: { name: 'Remembered look', subtitleStyle: look } })).json();
+  const kept = JSON.parse(readFileSync(join(project.path, '.film', 'subtitles.json'), 'utf8'));
+  assert.equal(kept.fill, '#ffd400');
+  assert.equal(kept.align, 'left');
+  /* no look sent, or a folder opened as it is: no file, so it is shown and exported in the default look */
+  const { project: plain } = await (await api('/api/projects', { method: 'POST', body: { name: 'No look' } })).json();
+  assert.equal(existsSync(join(plain.path, '.film', 'subtitles.json')), false);
+  const folder = join(scratch, 'Opened with a look');
+  const { project: opened } = await (await api('/api/projects', { method: 'POST', body: { path: folder, subtitleStyle: look } })).json();
+  assert.equal(existsSync(join(opened.path, '.film', 'subtitles.json')), false);
+});

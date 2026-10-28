@@ -130,8 +130,8 @@ export function joinColor(hex: string, alpha: number): string {
 
 /**
  * The style is kept per project (in the project folder, see useSubtitleStyle); this browser also remembers the look
- * last used, the starting point for a project whose style was never changed: someone who set up large yellow
- * subtitles wants them in the next film too.
+ * last used, the look a new project starts in (written to it as it is made, see api.newProject): someone who set up
+ * large yellow subtitles wants them in the next film too.
  */
 const STORE_KEY = 'openfilm.subtitles';
 
@@ -149,17 +149,6 @@ export function writeLastSubtitleStyle(style: SubtitleStyle): void {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(style));
   } catch { /* private mode */ }
-}
-
-/**
- * The style a project must be given once its folder has answered: the remembered look it starts from (`start`) when it
- * has none of its own (`kept`) and that look is not the default. Exports burn the project's file, not this browser's
- * memory, so without it a film shown in the remembered look would burn the default one (#286). Null: nothing to write.
- */
-export function inheritedSubtitleStyle(kept: SubtitleStyle | null, start: SubtitleStyle): SubtitleStyle | null {
-  if (kept) return null;
-  const same = JSON.stringify(parseFilmSubtitleStyle(start)) === JSON.stringify(parseFilmSubtitleStyle(SUBTITLE_DEFAULT));
-  return same ? null : start;
 }
 
 /* ── Studio's API (studio/server/captions.mjs) ───────────────────────────── */

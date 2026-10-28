@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SNAP_X, SNAP_Y, SUBTITLE_DEFAULT, SUBTITLE_HOME_Y, inheritedSubtitleStyle, joinColor, nearestSizeId, snapAxis, splitColor, subtitleCss } from './subtitles.ts';
+import { SNAP_X, SNAP_Y, SUBTITLE_DEFAULT, SUBTITLE_HOME_Y, joinColor, nearestSizeId, snapAxis, splitColor, subtitleCss } from './subtitles.ts';
 
 test('a dragged subtitle snaps within 6 screen pixels, whatever the size of the picture', () => {
   assert.deepEqual(snapAxis(0.505, 1000, SNAP_X), { value: 0.5, guide: 0.5 });
@@ -23,14 +23,4 @@ test('the preview sizes subtitles by the frame box, never below 11px', () => {
   assert.equal(subtitleCss(SUBTITLE_DEFAULT).text.fontSize, 'max(11px, 4cqmin)');
   assert.equal(nearestSizeId(5), 'lg');
   assert.equal(nearestSizeId(3.5), 'sm');
-});
-
-test('a project with no style of its own keeps the remembered look it is shown in, so its exports burn it (#286)', () => {
-  const remembered = { ...SUBTITLE_DEFAULT, fill: '#ffd400', align: 'left' as const };
-  assert.deepEqual(inheritedSubtitleStyle(null, remembered), remembered);
-  /* the default needs no file: the export burns it anyway */
-  assert.equal(inheritedSubtitleStyle(null, SUBTITLE_DEFAULT), null);
-  assert.equal(inheritedSubtitleStyle(null, { ...SUBTITLE_DEFAULT }), null);
-  /* the project's own style is never replaced */
-  assert.equal(inheritedSubtitleStyle({ ...SUBTITLE_DEFAULT, on: false }, remembered), null);
 });
